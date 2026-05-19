@@ -101,6 +101,17 @@ unset CONDA_BUILD_SYSROOT
 unset BUILD_PREFIX
 unset NVCC_PREPEND_FLAGS
 
+echo "=== Step 1.7: OpenGL preference 패치 (GLVND -> LEGACY) ==="
+# SiftGPU가 OpenGL::GL (legacy 타겟) 을 하드코딩으로 링크하므로
+# FindDependencies.cmake 의 GLVND 설정을 LEGACY 로 바꿔서 libGL.so 사용
+FIND_DEPS="$SRC_DIR/cmake/FindDependencies.cmake"
+if grep -q "OpenGL_GL_PREFERENCE GLVND" "$FIND_DEPS"; then
+    sed -i 's/OpenGL_GL_PREFERENCE GLVND/OpenGL_GL_PREFERENCE LEGACY/' "$FIND_DEPS"
+    echo "  $FIND_DEPS 패치 완료"
+else
+    echo "  이미 패치됨 또는 GLVND 라인 없음 — skip"
+fi
+
 echo "=== Step 2: cmake 구성 ==="
 cd "$SRC_DIR"
 rm -rf build
