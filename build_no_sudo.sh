@@ -104,8 +104,6 @@ unset BUILD_PREFIX
 unset NVCC_PREPEND_FLAGS
 
 echo "=== Step 1.7: OpenGL preference 패치 (GLVND -> LEGACY) ==="
-# SiftGPU가 OpenGL::GL (legacy 타겟) 을 하드코딩으로 링크하므로
-# FindDependencies.cmake 의 GLVND 설정을 LEGACY 로 바꿔서 libGL.so 사용
 FIND_DEPS="$SRC_DIR/cmake/FindDependencies.cmake"
 if grep -q "OpenGL_GL_PREFERENCE GLVND" "$FIND_DEPS"; then
     sed -i 's/OpenGL_GL_PREFERENCE GLVND/OpenGL_GL_PREFERENCE LEGACY/' "$FIND_DEPS"
@@ -113,6 +111,41 @@ if grep -q "OpenGL_GL_PREFERENCE GLVND" "$FIND_DEPS"; then
 else
     echo "  이미 패치됨 또는 GLVND 라인 없음 — skip"
 fi
+
+echo "=== Step 1.8: libGL 위치 탐색 (sysroot 우회) ==="
+LIBGL=""
+for candidate in \
+    "$CONDA_PREFIX/lib/libGL.so" \
+    "$CONDA_PREFIX/lib/libGL.so.1" \
+    "/usr/lib/x86_64-linux-gnu/libGL.so" \
+    "/usr/lib/x86_64-linux-gnu/libGL.so.1" \
+    "/usr/lib64/libGL.so" \
+    "/usr/lib64/libGL.so.1" ; do
+    if [ -e "$candidate" ]; then
+        LIBGL="$candidate"
+        break
+    fi
+done
+
+LIBGL_INC=""
+for candidate in \
+    "$CONDA_PREFIX/include" \
+    "/usr/include" ; do
+    if [ -f "$candidate/GL/gl.h" ]; then
+        LIBGL_INC="$candidate"
+        break
+    fi
+done
+
+if [ -z "$LIBGL" ] || [ -z "$LIBGL_INC" ]; then
+    echo "  ERROR: libGL.so 또는 GL/gl.h 를 못 찾음"
+    echo "    libGL: $LIBGL"
+    echo "    GL/gl.h dir: $LIBGL_INC"
+    echo "  시스템에 OpenGL 런타임/헤더가 필요합니다."
+    exit 1
+fi
+echo "  libGL: $LIBGL"
+echo "  GL include dir: $LIBGL_INC"
 
 echo "=== Step 2: cmake 구성 ==="
 cd "$SRC_DIR"
@@ -136,6 +169,8 @@ cmake .. -GNinja \
     -DGUI_ENABLED=OFF \
     -DTESTS_ENABLED=OFF \
     -DOPENGL_ENABLED=OFF \
+    -DOPENGL_gl_LIBRARY="$LIBGL" \
+    -DOPENGL_INCLUDE_DIR="$LIBGL_INC" \
     -DCMAKE_CXX_FLAGS="-I$CONDA_PREFIX/include" \
     -DCMAKE_C_FLAGS="-I$CONDA_PREFIX/include"
 
