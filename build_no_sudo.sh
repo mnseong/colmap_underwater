@@ -25,8 +25,9 @@ CUDA_ARCH="89"                       # RTX 6000 Ada = 8.9
 INSTALL_PREFIX="$HOME/colmap_underwater_install"
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# --- GPU 선택 (RTX 6000 Ada = GPU 1) ---
-export CUDA_VISIBLE_DEVICES=1
+# --- GPU 선택 (RTX 6000 Ada, UUID로 지정 — index는 환경마다 바뀔 수 있음) ---
+GPU_UUID="GPU-6d227fd1-fa09-a654-2a56-036811cd2b43"
+export CUDA_VISIBLE_DEVICES="$GPU_UUID"
 
 echo "=== Step 1: conda 환경 준비 ==="
 echo "  gxx_linux-64 를 설치하지 않음 (sysroot 충돌 방지)"
@@ -182,10 +183,11 @@ ninja install
 
 # conda 환경에 PATH 자동 등록
 mkdir -p "$CONDA_PREFIX/etc/conda/activate.d"
-cat > "$CONDA_PREFIX/etc/conda/activate.d/colmap.sh" << 'ACTIVATE_EOF'
-export PATH="$HOME/colmap_underwater_install/bin:$PATH"
-export LD_LIBRARY_PATH="/usr/local/cuda-12.4/lib64:$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
-export CUDA_VISIBLE_DEVICES=1
+cat > "$CONDA_PREFIX/etc/conda/activate.d/colmap.sh" << ACTIVATE_EOF
+export PATH="\$HOME/colmap_underwater_install/bin:\$PATH"
+export LD_LIBRARY_PATH="/usr/local/cuda-12.4/lib64:\$CONDA_PREFIX/lib:\$LD_LIBRARY_PATH"
+# RTX 6000 Ada — UUID로 고정 (서버에서 index가 바뀌어도 안전)
+export CUDA_VISIBLE_DEVICES="$GPU_UUID"
 ACTIVATE_EOF
 
 echo ""
