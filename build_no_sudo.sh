@@ -28,35 +28,58 @@ SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 # --- GPU 선택 (RTX 6000 Ada = GPU 1) ---
 export CUDA_VISIBLE_DEVICES=1
 
-echo "=== Step 1: conda 환경 생성 + 의존성 설치 ==="
+echo "=== Step 1: conda 환경 준비 ==="
 echo "  gxx_linux-64 를 설치하지 않음 (sysroot 충돌 방지)"
 echo "  시스템 GCC: $(gcc --version | head -1)"
 
-# 기존 환경 제거 후 재생성
-conda remove -n $ENV_NAME --all -y 2>/dev/null || true
-conda create -n $ENV_NAME -y python=3.10
 eval "$(conda shell.bash hook)"
+
+# 환경이 없을 때만 생성 (재실행 시 기존 환경 재사용)
+if ! conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
+    echo "  환경 '$ENV_NAME' 생성 중..."
+    conda create -n $ENV_NAME -y python=3.10
+else
+    echo "  환경 '$ENV_NAME' 이미 존재 — 재사용"
+fi
 conda activate $ENV_NAME
 
-# gxx_linux-64 없이 라이브러리만 설치
-conda install -y -c conda-forge \
-    cmake \
-    ninja \
-    boost-cpp \
-    eigen=3.4.0 \
-    ceres-solver \
-    glog \
-    gflags \
-    freeimage \
-    flann \
-    sqlite \
-    metis \
-    cgal-cpp \
-    glew \
-    lz4-c \
-    mesa-libgl-devel-cos7-x86_64 \
-    mesalib \
+# 필요한 패키지 목록 (이미 설치된 건 conda가 알아서 skip)
+REQUIRED_PKGS=(
+    cmake
+    ninja
+    boost-cpp
+    "eigen=3.4.0"
+    ceres-solver
+    glog
+    gflags
+    freeimage
+    flann
+    sqlite
+    metis
+    cgal-cpp
+    glew
+    lz4-c
+    mesa-libgl-devel-cos7-x86_64
+    mesalib
     libglvnd-devel-cos7-x86_64
+)
+
+# 누락된 패키지만 추출해서 설치 (있는 건 skip — 빠르게 진행)
+MISSING_PKGS=()
+INSTALLED=$(conda list -n $ENV_NAME --no-pip 2>/dev/null | awk 'NR>3 {print $1}')
+for pkg in "${REQUIRED_PKGS[@]}"; do
+    name="${pkg%%=*}"
+    if ! echo "$INSTALLED" | grep -qx "$name"; then
+        MISSING_PKGS+=("$pkg")
+    fi
+done
+
+if [ ${#MISSING_PKGS[@]} -eq 0 ]; then
+    echo "  모든 conda 의존성이 이미 설치됨 — skip"
+else
+    echo "  누락된 패키지 설치: ${MISSING_PKGS[*]}"
+    conda install -y -c conda-forge "${MISSING_PKGS[@]}"
+fi
 
 echo "=== Step 1.5: conda sysroot 무력화 ==="
 # 일부 conda 패키지가 sysroot를 의존성으로 가져올 수 있음
@@ -65,6 +88,10 @@ CONDA_SYSROOT="$CONDA_PREFIX/x86_64-conda-linux-gnu/sysroot"
 if [ -d "$CONDA_SYSROOT/usr/include" ]; then
     echo "  conda sysroot 발견 — include 디렉토리 이름 변경"
     mv "$CONDA_SYSROOT/usr/include" "$CONDA_SYSROOT/usr/include.bak"
+elif [ -d "$CONDA_SYSROOT/usr/include.bak" ]; then
+    echo "  conda sysroot 이미 무력화됨 — skip"
+else
+    echo "  conda sysroot 없음 — skip"
 fi
 
 # conda cross-compiler 환경변수 제거 (cmake가 참조하지 않도록)
