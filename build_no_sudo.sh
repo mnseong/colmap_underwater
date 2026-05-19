@@ -81,14 +81,16 @@ else
     conda install -y -c conda-forge "${MISSING_PKGS[@]}"
 fi
 
-echo "=== Step 1.5: conda sysroot 무력화 ==="
-# 일부 conda 패키지가 sysroot를 의존성으로 가져올 수 있음
-# 시스템 헤더와 충돌하므로 sysroot include를 비활성화
+echo "=== Step 1.5: conda sysroot 전체 무력화 ==="
+# sysroot/usr/include 는 시스템 헤더와 충돌
+# sysroot/usr/lib 는 GLIBC_PRIVATE 심볼 참조로 시스템 glibc 2.35와 링크 실패
+# (예: librt.so가 __libc_dlopen_mode@GLIBC_PRIVATE 참조)
+# 따라서 sysroot 디렉토리 전체를 이름 변경해서 cmake가 못 찾게 만듦
 CONDA_SYSROOT="$CONDA_PREFIX/x86_64-conda-linux-gnu/sysroot"
-if [ -d "$CONDA_SYSROOT/usr/include" ]; then
-    echo "  conda sysroot 발견 — include 디렉토리 이름 변경"
-    mv "$CONDA_SYSROOT/usr/include" "$CONDA_SYSROOT/usr/include.bak"
-elif [ -d "$CONDA_SYSROOT/usr/include.bak" ]; then
+if [ -d "$CONDA_SYSROOT" ] && [ ! -L "$CONDA_SYSROOT" ]; then
+    echo "  conda sysroot 발견 — 전체 디렉토리 이름 변경"
+    mv "$CONDA_SYSROOT" "$CONDA_SYSROOT.bak"
+elif [ -d "$CONDA_SYSROOT.bak" ]; then
     echo "  conda sysroot 이미 무력화됨 — skip"
 else
     echo "  conda sysroot 없음 — skip"
