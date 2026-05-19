@@ -53,7 +53,10 @@ conda install -y -c conda-forge \
     metis \
     cgal-cpp \
     glew \
-    lz4-c
+    lz4-c \
+    mesa-libgl-devel-cos7-x86_64 \
+    mesalib \
+    libglvnd-devel-cos7-x86_64
 
 echo "=== Step 1.5: conda sysroot 무력화 ==="
 # 일부 conda 패키지가 sysroot를 의존성으로 가져올 수 있음
