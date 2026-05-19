@@ -25,7 +25,9 @@ RUNNER="$SCRIPT_DIR/run_colmap_swimm3r.sh"
 
 SWIMM3R_ROOT="/data/minseong/datasets/Barbados_swimm3r"
 COLMAP_ROOT="${COLMAP_ROOT:-/data/minseong/datasets/Barbados_colmap_v2}"
-INPUT_ROOT="/data/minseong/datasets/Barbados_colmap"
+INPUT_ROOT="${INPUT_ROOT:-/data/minseong/datasets/Barbados_colmap}"
+# Image subdir under each videoN_undist/  (default: images, UIE: images_uie)
+INPUT_SUBDIR="${INPUT_SUBDIR:-images}"
 
 # Which videos to run (default: 1 2 3 4)
 if [ $# -gt 0 ]; then
@@ -35,6 +37,7 @@ else
 fi
 
 echo "=== Batch config ==="
+echo "  INPUT_ROOT=$INPUT_ROOT  INPUT_SUBDIR=$INPUT_SUBDIR"
 echo "  COLMAP_ROOT=$COLMAP_ROOT"
 echo "  PSEUDO_GT=${PSEUDO_GT:-0}"
 echo "  ENABLE_REFRACTION=${ENABLE_REFRACTION:-0}"
@@ -46,7 +49,7 @@ for N in "${VIDEOS[@]}"; do
     echo "###  video$N"
     echo "############################################################"
     SPLIT="$SWIMM3R_ROOT/video$N/split.json"
-    INPUT="$INPUT_ROOT/video${N}_undist/images"
+    INPUT="$INPUT_ROOT/video${N}_undist/$INPUT_SUBDIR"
     OUTPUT="$COLMAP_ROOT/video$N"
 
     if [ ! -f "$SPLIT" ]; then
