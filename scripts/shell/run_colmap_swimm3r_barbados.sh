@@ -19,7 +19,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 RUNNER="$SCRIPT_DIR/run_colmap_swimm3r.sh"
 
 SWIMM3R_ROOT="/data/minseong/datasets/Barbados_swimm3r"
-COLMAP_ROOT="/data/minseong/datasets/Barbados_colmap"
+COLMAP_ROOT="/data/minseong/datasets/Barbados_colmap_v2"
+# input image dir (undistorted) still lives under the original Barbados_colmap
+INPUT_ROOT="/data/minseong/datasets/Barbados_colmap"
 
 # Which videos to run (default: 1 2 3 4)
 if [ $# -gt 0 ]; then
@@ -34,7 +36,7 @@ for N in "${VIDEOS[@]}"; do
     echo "###  video$N"
     echo "############################################################"
     SPLIT="$SWIMM3R_ROOT/video$N/split.json"
-    INPUT="$COLMAP_ROOT/video${N}_undist/images"
+    INPUT="$INPUT_ROOT/video${N}_undist/images"
     OUTPUT="$COLMAP_ROOT/video$N"
 
     if [ ! -f "$SPLIT" ]; then
