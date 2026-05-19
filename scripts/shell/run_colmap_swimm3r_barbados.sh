@@ -6,21 +6,25 @@ set -e
 # Paths (per the dataset layout):
 #   split.json : /data/minseong/datasets/Barbados_swimm3r/videoN/split.json
 #   input imgs : /data/minseong/datasets/Barbados_colmap/videoN_undist/images
-#   output     : /data/minseong/datasets/Barbados_colmap/videoN/
+#   output     : ${COLMAP_ROOT:-/data/minseong/datasets/Barbados_colmap_v2}/videoN/
 #                 ├── images/      all frames (symlinks)
-#                 └── sparse/0/    train-only COLMAP map (standard format)
+#                 └── sparse/0/    COLMAP map (standard format)
 #
 # Usage:
 #   bash run_colmap_swimm3r_barbados.sh                # all of video1..video4
 #   bash run_colmap_swimm3r_barbados.sh 1 3            # only video1 and video3
+#
+# Env override (forwarded to run_colmap_swimm3r.sh):
+#   COLMAP_ROOT=...         # output root  (default: Barbados_colmap_v2)
+#   PSEUDO_GT=1             # use ALL frames (train+test) for SfM
+#   ENABLE_REFRACTION=1     # Track B (needs CAMERA_REFRAC_MODEL/PARAMS)
 ###############################################################################
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 RUNNER="$SCRIPT_DIR/run_colmap_swimm3r.sh"
 
 SWIMM3R_ROOT="/data/minseong/datasets/Barbados_swimm3r"
-COLMAP_ROOT="/data/minseong/datasets/Barbados_colmap_v2"
-# input image dir (undistorted) still lives under the original Barbados_colmap
+COLMAP_ROOT="${COLMAP_ROOT:-/data/minseong/datasets/Barbados_colmap_v2}"
 INPUT_ROOT="/data/minseong/datasets/Barbados_colmap"
 
 # Which videos to run (default: 1 2 3 4)
@@ -29,6 +33,12 @@ if [ $# -gt 0 ]; then
 else
     VIDEOS=(1 2 3 4)
 fi
+
+echo "=== Batch config ==="
+echo "  COLMAP_ROOT=$COLMAP_ROOT"
+echo "  PSEUDO_GT=${PSEUDO_GT:-0}"
+echo "  ENABLE_REFRACTION=${ENABLE_REFRACTION:-0}"
+echo "  videos: ${VIDEOS[*]}"
 
 for N in "${VIDEOS[@]}"; do
     echo ""
@@ -48,7 +58,13 @@ for N in "${VIDEOS[@]}"; do
         continue
     fi
 
-    SPLIT_JSON="$SPLIT" bash "$RUNNER" "$INPUT" "$OUTPUT"
+    # PSEUDO_GT=1 then we ignore SPLIT_JSON (run_colmap_swimm3r.sh will use
+    # all frames as train). Otherwise pass split.json as source of truth.
+    if [ "${PSEUDO_GT:-0}" = "1" ]; then
+        bash "$RUNNER" "$INPUT" "$OUTPUT"
+    else
+        SPLIT_JSON="$SPLIT" bash "$RUNNER" "$INPUT" "$OUTPUT"
+    fi
 done
 
 echo ""
